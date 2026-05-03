@@ -79,7 +79,7 @@ func (g Game) GetStarterPlayer() (bool, bool) {
 	}
 }
 
-func (g Game) Move(p1Turn bool) bool {
+func (g Game) Move(p1Turn bool) (bool, types.Coords) {
 	var playerIdx int
 	if !p1Turn {
 		playerIdx = 1
@@ -91,18 +91,18 @@ func (g Game) Move(p1Turn bool) bool {
 	quitCoords := types.Coords{-1, -1}
 	selection := g.players[playerIdx].Algorithm(g.gameBoard)
 	if selection == quitCoords {
-		return true
+		return true, types.Coords{}
 	}
 	g.gameBoard[selection[0]][selection[1]] = g.players[playerIdx].Icon
-	return false
+	return false, selection
 }
 
-func (g Game) CheckEnd(p1Turn bool) string {
+func (g Game) CheckEnd(p1Turn bool, coords types.Coords) string {
 	var playerIdx int
 	if !p1Turn {
 		playerIdx = 1
 	}
-	if win := helpers.CheckWin(g.gameBoard, 3); win {
+	if win := helpers.CheckWin(g.gameBoard, coords, 3); win {
 		return g.players[playerIdx].Name
 	}
 	if end := g.turnCounter(); end {

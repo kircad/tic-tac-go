@@ -17,8 +17,8 @@ const version = "0.1.0" // CLI version string.
 
 type game interface {
 	GetStarterPlayer() (bool, bool)
-	Move(bool) bool
-	CheckEnd(bool) string // TODO ENUM TYPE?
+	Move(bool) (bool, types.Coords)
+	CheckEnd(bool, types.Coords) string
 	HandleOutcome(string)
 }
 
@@ -71,10 +71,11 @@ func run(g game) {
 	}
 
 	for {
-		if quit := g.Move(p1turn); quit {
+		quit, coords := g.Move(p1turn)
+		if quit {
 			break
 		}
-		outcome = g.CheckEnd(p1turn)
+		outcome = g.CheckEnd(p1turn, coords)
 		if outcome != "" {
 			break
 		}

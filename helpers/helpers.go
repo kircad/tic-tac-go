@@ -89,129 +89,255 @@ func CheckTie(lim int) func() bool {
 	}
 }
 
-func CheckWin(gameBoard types.Board, winLen int) bool {
-	width, height := len(gameBoard[0]), len(gameBoard)
-	// Check rows
-	for i := range height {
-		if win := checkSequence(gameBoard[i], winLen); win {
-			return true
-		}
-	}
+func CheckWin(gameBoard types.Board, coords types.Coords, winLen int) bool { // TODO clean up
+	// win sequence must contain placed piece -- so starting at piece, extend in either direction until you reach an edge or non-player piece, then go in other direction. If win, return true
+	height, width := len(gameBoard[0]), len(gameBoard)
 
-	// Check cols
-	var col []rune = make([]rune, height)
-	for i := range width {
-		for j := range len(gameBoard[i]) {
-			col[j] = gameBoard[j][i]
-		} // IMPORTANT x[:][0] == x[0] in Go! [:] just slices the entire outer slice, then [i] takes the ith row -- this is why we have to manually construct col
-		if win := checkSequence(col, winLen); win {
-			return true
-		}
-	}
-
-	// Check diagonals
-	var diag []rune
-	maxDiag := min(width, height)
-	for i := range height {
-		topCoords, bottomCoords := &types.Coords{0, int32(i)}, &types.Coords{int32(height) - 1, int32(i)}
-
-		if i-winLen+1 >= 0 { // Assumes height >= winLen
-
-			// top row
-			diag = constructDiagonal(gameBoard,
-				topCoords,
-				func(coords *types.Coords) {
-					coords[0]++
-					coords[1]--
-				},
-				func(coords types.Coords) bool {
-					return coords[0] == int32(height) || coords[1] < 0
-				},
-				maxDiag)
-			if win := checkSequence(diag, winLen); win {
-				return true
-			}
-
-			// bottom row
-			diag = constructDiagonal(gameBoard,
-				bottomCoords,
-				func(coords *types.Coords) {
-					coords[0]--
-					coords[1]--
-				},
-				func(coords types.Coords) bool {
-					return coords[0] < 0 || coords[1] < 0
-				},
-				maxDiag)
-			if win := checkSequence(diag, winLen); win {
-				return true
-			}
-
-		}
-
-		if (i+winLen <= width) && (width-i < height) { // Assumes height >= winLen
-
-			// top row
-			diag = constructDiagonal(gameBoard,
-				topCoords,
-				func(coords *types.Coords) {
-					coords[0]++
-					coords[1]++
-				},
-				func(coords types.Coords) bool {
-					return coords[0] == int32(height) || coords[1] == int32(height)
-				},
-				maxDiag)
-			if win := checkSequence(diag, winLen); win {
-				return true
-			}
-
-			// bottom row
-			diag = constructDiagonal(gameBoard,
-				bottomCoords,
-				func(coords *types.Coords) {
-					coords[0]--
-					coords[1]++
-				},
-				func(coords types.Coords) bool {
-					return coords[0] < 0 || coords[1] < 0
-				},
-				maxDiag)
-			if win := checkSequence(diag, winLen); win {
-				return true
-			}
-		}
-	}
-	return false
-}
-
-func constructDiagonal(board types.Board, coords *types.Coords, increment func(*types.Coords), checkEnd func(types.Coords) bool, maxLen int) []rune {
-	diag := make([]rune, 0, maxLen)
-	for {
-		diag = append(diag, board[coords[0]][coords[1]])
-		increment(coords)
-		if checkEnd(*coords) {
-			return diag
-		}
-	}
-}
-
-func checkSequence(sequence []rune, winLen int) bool {
-	var streak int
-	var currStart int
-	for i := range sequence {
-		if sequence[i] == '_' {
-			break
-		}
-		if sequence[i] == sequence[currStart] {
-			streak++
+	// check row
+	fmt.Println("CHECKING ROW")
+	winPiece := gameBoard[coords[0]][coords[1]]
+	idx := coords[1] + 1
+	streak := 1
+	for idx < int32(width) {
+		if gameBoard[coords[0]][idx] == winPiece {
+			streak += 1
 			if streak == winLen {
 				return true
 			}
 		} else {
-			currStart = i
-			streak = 1
+			break
 		}
+		idx += 1
 	}
+
+	idx = coords[1] - 1
+	for idx >= 0 {
+		if gameBoard[coords[0]][idx] == winPiece {
+			streak += 1
+			if streak == winLen {
+				return true
+			}
+		} else {
+			break
+		}
+		idx -= 1
+	}
+
+	// check col
+	streak = 1
+	idx = coords[0] + 1
+	for idx < int32(height) {
+		if gameBoard[idx][coords[1]] == winPiece {
+			streak += 1
+			if streak == winLen {
+				return true
+			}
+		} else {
+			break
+		}
+		idx += 1
+	}
+
+	idx = coords[0] - 1
+	for idx >= 0 {
+		if gameBoard[idx][coords[1]] == winPiece {
+			streak += 1
+			if streak == winLen {
+				return true
+			}
+		} else {
+			break
+		}
+		idx -= 1
+	}
+
+	// check left diagonal
+	streak = 1
+	row, col := coords[0]-1, coords[1]-1
+	for row >= 0 && col >= 0 {
+		if gameBoard[row][col] == winPiece {
+			streak += 1
+			if streak == winLen {
+				return true
+			}
+		} else {
+			break
+		}
+		col -= 1
+		row -= 1
+	}
+
+	row, col = coords[0]+1, coords[1]+1
+	for col < int32(width) && row < int32(height) {
+		if gameBoard[row][col] == winPiece {
+			streak += 1
+			if streak == winLen {
+				return true
+			}
+		} else {
+			break
+		}
+		col += 1
+		row += 1
+	}
+
+	// check right diagonal
+	streak = 1
+	row, col = coords[0]-1, coords[1]+1
+	for col < int32(width) && row >= 0 {
+		if gameBoard[row][col] == winPiece {
+			streak += 1
+			if streak == winLen {
+				return true
+			}
+		} else {
+			break
+		}
+		col += 1
+		row -= 1
+	}
+
+	row, col = coords[0]+1, coords[1]-1
+	for col >= 0 && row < int32(height) {
+		if gameBoard[row][col] == winPiece {
+			streak += 1
+			if streak == winLen {
+				return true
+			}
+		} else {
+			break
+		}
+		col -= 1
+		row += 1
+	}
+
 	return false
 }
+
+// Old implementation -- does not use position of most recently placed
+// func CheckWin(gameBoard types.Board, winLen int) bool {
+// 	width, height := len(gameBoard[0]), len(gameBoard)
+// 	// Check rows
+// 	for i := range height {
+// 		if win := checkSequence(gameBoard[i], winLen); win {
+// 			return true
+// 		}
+// 	}
+
+// 	// Check cols
+// 	var col []rune = make([]rune, height)
+// 	for i := range width {
+// 		for j := range len(gameBoard[i]) {
+// 			col[j] = gameBoard[j][i]
+// 		} // IMPORTANT x[:][0] == x[0] in Go! [:] just slices the entire outer slice, then [i] takes the ith row -- this is why we have to manually construct col
+// 		if win := checkSequence(col, winLen); win {
+// 			return true
+// 		}
+// 	}
+
+// 	// Check diagonals
+// 	var diag []rune
+// 	maxDiag := min(width, height)
+// 	for i := range height {
+// 		topCoords, bottomCoords := &types.Coords{0, int32(i)}, &types.Coords{int32(height) - 1, int32(i)}
+
+// 		if i-winLen+1 >= 0 { // Assumes height >= winLen
+
+// 			// top row
+// 			diag = constructDiagonal(gameBoard,
+// 				topCoords,
+// 				func(coords *types.Coords) {
+// 					coords[0]++
+// 					coords[1]--
+// 				},
+// 				func(coords types.Coords) bool {
+// 					return coords[0] == int32(height) || coords[1] < 0
+// 				},
+// 				maxDiag)
+// 			if win := checkSequence(diag, winLen); win {
+// 				return true
+// 			}
+
+// 			// bottom row
+// 			diag = constructDiagonal(gameBoard,
+// 				bottomCoords,
+// 				func(coords *types.Coords) {
+// 					coords[0]--
+// 					coords[1]--
+// 				},
+// 				func(coords types.Coords) bool {
+// 					return coords[0] < 0 || coords[1] < 0
+// 				},
+// 				maxDiag)
+// 			if win := checkSequence(diag, winLen); win {
+// 				return true
+// 			}
+
+// 		}
+
+// 		if (i+winLen <= width) && (width-i < height) { // Assumes height >= winLen
+
+// 			// top row
+// 			diag = constructDiagonal(gameBoard,
+// 				topCoords,
+// 				func(coords *types.Coords) {
+// 					coords[0]++
+// 					coords[1]++
+// 				},
+// 				func(coords types.Coords) bool {
+// 					return coords[0] == int32(height) || coords[1] == int32(height)
+// 				},
+// 				maxDiag)
+// 			if win := checkSequence(diag, winLen); win {
+// 				return true
+// 			}
+
+// 			// bottom row
+// 			diag = constructDiagonal(gameBoard,
+// 				bottomCoords,
+// 				func(coords *types.Coords) {
+// 					coords[0]--
+// 					coords[1]++
+// 				},
+// 				func(coords types.Coords) bool {
+// 					return coords[0] < 0 || coords[1] < 0
+// 				},
+// 				maxDiag)
+// 			if win := checkSequence(diag, winLen); win {
+// 				return true
+// 			}
+// 		}
+// 	}
+// 	return false
+// }
+
+// func constructDiagonal(board types.Board, coords *types.Coords, increment func(*types.Coords), checkEnd func(types.Coords) bool, maxLen int) []rune {
+// 	diag := make([]rune, 0, maxLen)
+// 	for {
+// 		diag = append(diag, board[coords[0]][coords[1]])
+// 		increment(coords)
+// 		if checkEnd(*coords) {
+// 			return diag
+// 		}
+// 	}
+// }
+
+// func checkSequence(sequence []rune, winLen int) bool {
+// 	var streak int
+// 	var currStart int
+// 	for i := range sequence {
+// 		if sequence[i] == '_' {
+// 			continue
+// 		}
+// 		if sequence[i] == sequence[currStart] {
+// 			streak++
+// 			if streak == winLen {
+// 				return true
+// 			}
+// 		} else {
+// 			currStart = i
+// 			streak = 1
+// 		}
+// 	}
+// 	return false
+// }
